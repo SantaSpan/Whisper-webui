@@ -60,7 +60,7 @@ def copy_process_streams(process: sp.Popen):
 def separate(inp=None, outp=None):
     inp = inp or in_path
     outp = outp or out_path
-    cmd = ["python3", "-m", "demucs.separate", "-o", str(outp), "-n", model, "-d" , "cuda",  "--two-stems=vocals", "--overlap", "0.12", "-j", "8", "--segment", "10"]
+    cmd = ["python3", "-m", "demucs.separate", "-o", str(outp), "-n", model, "-d" , "cuda",   "--overlap", "0.12", "-j", "8", "--segment", "10"]
     if mp3:
         cmd += ["--mp3", f"--mp3-bitrate={mp3_rate}"]
     if float32:
