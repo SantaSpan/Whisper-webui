@@ -101,7 +101,7 @@ def separate(inp=None, outp=None):
     last_size = 0
     while not write_finished:
         time.sleep(2)
-        file_stats = os.stat(file_name)
+        file_stats = os.stat(vocals_path)
         file_size = file_stats.st_size
         if file_size == last_size:
             write_finished = True
