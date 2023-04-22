@@ -2,12 +2,15 @@ import argparse
 import math
 import os
 import pathlib
+import subprocess as sp
 import tempfile
 import zipfile
 from datetime import datetime
+from email.mime import audio
 from io import StringIO
 from typing import Iterator, Union
 
+import audioread
 # External programs
 import ffmpeg
 # UI
@@ -406,14 +409,28 @@ class WhisperTranscriber:
         if (self.cpu_parallel_context is not None):
             self.cpu_parallel_context.close()
             
-            
+def get_audio_length(filepath) -> tuple[int, int]:
+
+    with audioread.audio_open(filepath) as f:
+        totalsec = f.duration
+        min, sec = divmod(totalsec,60)
+        return min,sec
+    
 class DemucsController:
     def __init__(self, download_url=None, audio_dir = "/content/demucs", app_config: ApplicationConfig = None):
         self.audio_dir = audio_dir
         self.app_config = app_config
         
     def extract_voice(self, download_url):
+        audio_output_dir = self.audio_dir + "/extraction"
         file = self.download_yt(download_url, self.audio_dir)[0]
+        
+        #check file length
+        file_path = pathlib.Path(audio_output_dir) / file
+        print(file)
+        print(file_path)
+        cmd =  ["ffmpeg", "-i", file, "-f", "segment", "-segment", "_time", "600", "-c", "copy", "output_audio_%03d.mp3"]
+        p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
         
         folder = demucs_scripts.separate(file, "/content/demucs_split")
         
