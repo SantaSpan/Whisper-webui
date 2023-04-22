@@ -85,16 +85,27 @@ def separate(inp=None, outp=None):
     file_name_dir = ".".join(file_name.split(".")[:-1])
     vocals_path = Path(outp) / model / file_name_dir / "vocals.mp3"
     print(f"vocals path: {vocals_path}")
-
+    
     p = sp.Popen(cmd + files, stdout=sp.PIPE, stderr=sp.PIPE)
     #copy_process_streams(p)
     
 
     while p.poll() is None:
         if os.path.exists(vocals_path):
-            print("vocals file found, terminating process")
-            p.kill()
             break
+        
+    print("vocals file found, waiting for write to complete")
+
+    write_finished = False
+    last_size = 0
+    while not write_finished:
+        time.sleep(4)
+        file_stats = os.stat(vocals_path)
+        file_size = file_stats.st_size
+        if file_size == last_size:
+            write_finished = True
+            p.kill()
+        last_size = file_size
     
     print("finished")
     
