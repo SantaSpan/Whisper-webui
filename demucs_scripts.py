@@ -62,7 +62,7 @@ def copy_process_streams(process: sp.Popen):
 def separate(inp=None, outp=None):
     inp = inp or in_path
     outp = outp or out_path
-    cmd = ["python3", "-m", "demucs.separate", "-o", str(outp), "-n", model, "-d" , "cuda",  "--two-stems=vocals", "--segment", "20", "--overlap", "0.1"]
+    cmd = ["python3", "-m", "demucs.separate", "-o", str(outp), "-n", model, "-d" , "cuda",  "--two-stems=vocals", "--segment", "40", "--overlap", "0.2"]
     if mp3:
         cmd += ["--mp3", f"--mp3-bitrate={mp3_rate}"]
     if float32:
@@ -85,28 +85,16 @@ def separate(inp=None, outp=None):
     file_name_dir = ".".join(file_name.split(".")[:-1])
     vocals_path = Path(outp) / model / file_name_dir / "vocals.mp3"
     print(f"vocals path: {vocals_path}")
-    
-    start_time = time.time()
+
     p = sp.Popen(cmd + files, stdout=sp.PIPE, stderr=sp.PIPE)
     #copy_process_streams(p)
     
 
     while p.poll() is None:
         if os.path.exists(vocals_path):
-            break
-        
-    print("vocals file found, waiting for write to complete")
-
-    write_finished = False
-    last_size = 0
-    while not write_finished:
-        time.sleep(2)
-        file_stats = os.stat(file_name)
-        file_size = file_stats.st_size
-        if file_size == last_size:
-            write_finished = True
+            print("vocals file found, terminating process")
             p.kill()
-        last_size = file_size
+            break
     
     print("finished")
     
