@@ -1,14 +1,17 @@
 import argparse
+import io
 import math
 import os
 import pathlib
+import select
 import subprocess as sp
+import sys
 import tempfile
 import zipfile
 from datetime import datetime
 from email.mime import audio
 from io import StringIO
-from typing import Iterator, Union
+from typing import IO, Dict, Iterator, Optional, Tuple, Union
 
 import audioread
 # External programs
@@ -415,7 +418,34 @@ def get_audio_length(filepath) -> tuple[int, int]:
         totalsec = f.duration
         min, sec = divmod(totalsec,60)
         return min,sec
-    
+
+def copy_process_streams(process: sp.Popen):
+    def raw(stream: Optional[IO[bytes]]) -> IO[bytes]:
+        assert stream is not None
+        if isinstance(stream, io.BufferedIOBase):
+            stream = stream.raw
+        return stream
+
+    p_stdout, p_stderr = raw(process.stdout), raw(process.stderr)
+    stream_by_fd: Dict[int, Tuple[IO[bytes], io.StringIO, IO[str]]] = {
+        p_stdout.fileno(): (p_stdout, sys.stdout),
+        p_stderr.fileno(): (p_stderr, sys.stderr),
+    }
+    fds = list(stream_by_fd.keys())
+
+    while fds:
+        # `select` syscall will wait until one of the file descriptors has content.
+        ready, _, _ = select.select(fds, [], [])
+        for fd in ready:
+            p_stream, std = stream_by_fd[fd]
+            raw_buf = p_stream.read(2 ** 16)
+            if not raw_buf:
+                fds.remove(fd)
+                continue
+            buf = raw_buf.decode()
+            std.write(buf)
+            std.flush()
+            
 class DemucsController:
     def __init__(self, download_url=None, audio_dir = "/content/demucs", app_config: ApplicationConfig = None):
         self.audio_dir = audio_dir
@@ -428,9 +458,10 @@ class DemucsController:
         #check file length
         file_path = pathlib.Path(audio_output_dir) / file
         print(file)
-        print(file_path)
         cmd =  ["ffmpeg", "-i", file, "-f", "segment", "-segment", "_time", "600", "-c", "copy", "output_audio_%03d.mp3"]
         p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
+        copy_process_streams(p)
+        p.wait(timeout=30)
         
         folder = demucs_scripts.separate(file, "/content/demucs_split")
         
