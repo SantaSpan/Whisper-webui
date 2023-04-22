@@ -458,7 +458,7 @@ class DemucsController:
         #check file length
         file_path = pathlib.Path(audio_output_dir) / file
         print(file)
-        cmd =  ["ffmpeg", "-i", file, "-f", "segment", "-segment_time", "600", "-c", "copy", "output_audio_%03d.mp3"]
+        cmd =  ["ffmpeg", "-i", file, "-f", "segment", "-segment_time", "600", "-c", "copy", f"{audio_output_dir}/output_audio_%03d.webm"]
         p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
         copy_process_streams(p)
         p.wait(timeout=30)
